@@ -1,5 +1,7 @@
 # Sphere Geometry in Swift
 
+[![](https://tokei.rs/b1/github/lucka-me/sphere-geometry-swift)](https://github.com/lucka-me/sphere-geometry-swift)
+
 A core implementation of [S2 Geometry](https://github.com/google/s2geometry) in Swift.
 
 ## At a Glance
@@ -50,4 +52,4 @@ let package = Package(
 
 ## Platform Availability
 
-`SphereGeometry` depends on the `simd` module of Apple platform, therefore it's not supported on Windows or Linux yet.
+`SphereGeometry` depends on the `simd` module of Apple platform, therefore it's not available on Windows or Linux yet.

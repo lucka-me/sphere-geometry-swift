@@ -21,7 +21,7 @@ public struct CellCollection {
 public extension CellCollection {
     typealias UnderlyingSequence = [ CellIdentifier ]
 
-    static var wholeSpere: Self {
+    static var wholeSphere: Self {
         .guaranteed(cells: Zone.allCases.map { .whole(zone: $0) })
     }
 

@@ -31,15 +31,11 @@ public extension CellCollection {
     
     func aligned(at level: Level) -> Set<Element> {
         cells.reduce(into: .init()) { result, element in
-            switch element.level {
-            case level:
-                result.insert(element)
-            case .min ..< level:
-                for child in element.children(at: level) {
-                    result.insert(child)
-                }
-            default:
-                result.insert(element.parent(at: level))
+            if let parent = element.parent(at: level) {
+                // Includes itself
+                result.insert(parent)
+            } else {
+                result.formUnion(element.children(at: level))
             }
         }
     }
@@ -55,7 +51,7 @@ public extension CellCollection {
     
     func expand(to level: Level) -> Self {
         var result = Self.init(
-            guaranteed: self.cells.map { $0.level > level ? $0.parent(at: level) : $0 }
+            guaranteed: self.cells.map { $0.parent(at: level) ?? $0 }
         )
         result.normalize()
         return result
@@ -130,7 +126,7 @@ public extension CellCollection {
             guard cell.level > level else {
                 continue
             }
-            cells[index] = cell.parent(at: level)
+            cells[index] = cell.parent(guaranteed: level)
         }
         normalize()
     }

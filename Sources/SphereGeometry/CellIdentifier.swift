@@ -34,7 +34,7 @@ public extension CellIdentifier {
     }
     
     init(_ coordinate: CartesianCoordinate, at level: Level) {
-        self = .leaf(at: coordinate).parent(at: level)
+        self = .leaf(at: coordinate).parent(guaranteed: level)
     }
     
     var cell: Cell {
@@ -56,7 +56,7 @@ public extension CellIdentifier {
     }
     
     var level: Level {
-        .init(rawValue: Level.max.rawValue - (UInt8(rawValue.trailingZeroBitCount) >> 1))!
+        .guaranteed(rawValue: Level.max.rawValue - (UInt8(rawValue.trailingZeroBitCount) >> 1))
     }
     
     var parent: CellIdentifier {
@@ -102,12 +102,12 @@ public extension CellIdentifier {
         other.rangeMin <= self.rangeMax && other.rangeMax >= self.rangeMin
     }
     
-    func parent(at level: Level) -> CellIdentifier? {
-        guard self.level > level else {
-            return nil
+    func parent(at level: Level) -> Self? {
+        switch self.level {
+        case .min ..< level: nil
+        case level: self
+        default: parent(guaranteed: level)
         }
-        let parentLeastSignificantBit = Self.leastSignificantBit(at: level)
-        return .guaranteed(rawValue: (rawValue & (~parentLeastSignificantBit + 1)) | parentLeastSignificantBit)
     }
 }
 
@@ -187,7 +187,7 @@ extension CellIdentifier {
         return .init(zone: zone, coordinate: value)
     }
     
-    func parent(at level: Level) -> CellIdentifier {
+    func parent(guaranteed level: Level) -> Self {
         let parentLeastSignificantBit = Self.leastSignificantBit(at: level)
         return .guaranteed(rawValue: (rawValue & (~parentLeastSignificantBit + 1)) | parentLeastSignificantBit)
     }

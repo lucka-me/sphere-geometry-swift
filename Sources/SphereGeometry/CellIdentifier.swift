@@ -82,15 +82,10 @@ public extension CellIdentifier {
     }
     
     func children(at level: Level) -> [ Self ] {
-        let selfLevel = self.level
-        guard level > selfLevel else {
-            return [ self ]
-        }
-        let childrenLeastSignificantBit = Self.leastSignificantBit(at: level)
-        let start = rawValue - self.leastSignificantBit + childrenLeastSignificantBit
-        let steps = UInt64(level.rawValue - selfLevel.rawValue) * 4
-        return (0 ..< steps).map { step in
-            .guaranteed(rawValue: start + (step * (childrenLeastSignificantBit << 1)))
+        switch self.level {
+        case .min ..< level: children(guaranteed: level)
+        case level: [ self ]
+        default: [ ]
         }
     }
 
@@ -185,6 +180,16 @@ extension CellIdentifier {
             bits &= RawValue(Self.swapMask | Self.invertMask)
         }
         return .init(zone: zone, coordinate: value)
+    }
+    
+    func children(guaranteed level: Level) -> [ Self ] {
+        let selfLeastSignificantBit = self.leastSignificantBit
+        let childrenLeastSignificantBit = Self.leastSignificantBit(at: level)
+        return stride(
+            from: rawValue - selfLeastSignificantBit + childrenLeastSignificantBit,
+            to: rawValue + selfLeastSignificantBit + childrenLeastSignificantBit,
+            by: .init(childrenLeastSignificantBit << 1)
+        ).map(Self.guaranteed(rawValue:))
     }
     
     func parent(guaranteed level: Level) -> Self {

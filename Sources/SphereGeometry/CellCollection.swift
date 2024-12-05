@@ -35,7 +35,7 @@ public extension CellCollection {
                 // Includes itself
                 result.insert(parent)
             } else {
-                result.formUnion(element.children(at: level))
+                result.formUnion(element.children(guaranteed: level))
             }
         }
     }

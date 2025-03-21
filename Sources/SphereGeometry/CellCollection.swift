@@ -84,6 +84,39 @@ public extension CellCollection {
         )
         return .guaranteed(cells: .init(self.cells[lower ..< upper]))
     }
+
+    func intersects(_ other: Self) -> Bool {
+        guard !self.isEmpty, !other.isEmpty else {
+            return false
+        }
+        
+        var selfIndex = self.startIndex
+        var otherIndex = other.startIndex
+        while selfIndex < self.endIndex, otherIndex < other.endIndex {
+            let selfCell = self[selfIndex]
+            let otherCell = other[otherIndex]
+            guard !Element.entirelyBefore(lhs: selfCell, rhs: otherCell) else {
+                selfIndex = self.lower(
+                    of: otherCell,
+                    from: selfIndex + 1,
+                    to: self.endIndex,
+                    comparedBy: Element.entirelyBefore(lhs:rhs:)
+                )
+                continue
+            }
+            guard !Element.entirelyBefore(lhs: otherCell, rhs: selfCell) else {
+                otherIndex = other.lower(
+                    of: selfCell,
+                    from: otherIndex + 1,
+                    to: other.endIndex,
+                    comparedBy: Element.entirelyBefore(lhs:rhs:)
+                )
+                continue
+            }
+            return true
+        }
+        return false
+    }
     
     func intersects(_ element: Element) -> Bool {
         let index = self.cells.lower(of: element, comparedBy: Element.entirelyBefore(lhs:rhs:))

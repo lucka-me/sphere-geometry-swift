@@ -65,13 +65,19 @@ public extension Level {
     }
 }
 
-extension Level : Equatable, RawRepresentable, Sendable {
+extension Level : RawRepresentable, Sendable {
     
 }
 
 extension Level : Comparable {
     public static func < (lhs: Level, rhs: Level) -> Bool {
         lhs.rawValue < rhs.rawValue
+    }
+}
+
+extension Level : Equatable {
+    public static func == (lhs: Level, rhs: Level) -> Bool {
+        lhs.rawValue == rhs.rawValue
     }
 }
 

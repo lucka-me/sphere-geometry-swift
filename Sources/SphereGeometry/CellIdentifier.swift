@@ -169,13 +169,19 @@ public extension CellIdentifier {
     }
 }
 
-extension CellIdentifier : Codable, Hashable, RawRepresentable, Sendable, Equatable {
+extension CellIdentifier : Codable, Hashable, RawRepresentable, Sendable {
     
 }
 
 extension CellIdentifier : Comparable {
     public static func < (lhs: CellIdentifier, rhs: CellIdentifier) -> Bool {
         lhs.rawValue < rhs.rawValue
+    }
+}
+
+extension CellIdentifier : Equatable {
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.rawValue == rhs.rawValue
     }
 }
 

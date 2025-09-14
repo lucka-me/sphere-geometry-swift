@@ -122,6 +122,36 @@ extension CellIdentifier : CustomStringConvertible {
     }
 }
 
+extension CellIdentifier : Strideable {
+    public func advanced(by n: Int64) -> CellIdentifier {
+        guard n != .zero else {
+            return self
+        }
+        
+        let shift = (Level.max.rawValue - self.level.rawValue) * 2 + 1
+        let steps: Stride = if n < 0 {
+            max(n, -Stride(self.rawValue >> shift))
+        } else {
+            min(n, Stride((Self.wrapOffset + leastSignificantBit - rawValue) >> shift))
+        }
+        
+        return .guaranteed(rawValue: rawValue + (RawValue(steps) << shift))
+    }
+    
+    public func distance(to other: CellIdentifier) -> Int64 {
+        guard self != other else {
+            return 0
+        }
+        
+        let shift = (Level.max.rawValue - self.level.rawValue) * 2 + 1
+        return if other > self {
+            .init((other.rawValue - self.rawValue) >> shift)
+        } else {
+            -.init((self.rawValue - other.rawValue) >> shift)
+        }
+    }
+}
+
 extension CellIdentifier {
     typealias Position = UInt64
     
@@ -132,6 +162,8 @@ extension CellIdentifier {
     
     static let swapMask: UInt8 = 0x01
     static let zoneMask: RawValue = 0b111 << positionBits
+    
+    static let wrapOffset = RawValue(Zone.count) << positionBits
     
     static func guaranteed(rawValue: RawValue) -> Self {
         .init(guaranteed: rawValue)

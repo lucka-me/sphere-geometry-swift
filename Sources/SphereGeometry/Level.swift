@@ -8,7 +8,7 @@
 import Foundation
 
 public struct Level {
-    public private(set) var rawValue: UInt8
+    public let rawValue: UInt8
     
     public init?(rawValue: RawValue) {
         guard Self.min.rawValue <= rawValue && rawValue <= Self.max.rawValue else {
@@ -60,11 +60,6 @@ public extension Level {
         .guaranteed(rawValue: rawValue.clamped(to: min.rawValue ... max.rawValue))
     }
     
-    static func with(minimalWidth: Double) -> Self {
-        let value = ilogb(minimalWidthDerivative / (minimalWidth / Earth.radius))
-        return .init(guaranteed: .init(value.clamped(to: Int32(Self.min.rawValue) ... Int32(Self.max.rawValue))))
-    }
-    
     var averageArea: Double {
         scalbn(Self.averageAreaDerivative, -2 * .init(rawValue))
     }
@@ -109,7 +104,6 @@ extension Level {
 }
 
 fileprivate extension Level {
-    static let minimalWidthDerivative: Double = 2 * sqrt(2) / 3
     static let averageAreaDerivative: Double = 4 * .pi / 6
     
     init(guaranteed rawValue: RawValue) {

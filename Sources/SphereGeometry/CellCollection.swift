@@ -35,7 +35,7 @@ public extension CellCollection {
                 // Includes itself
                 result.insert(parent)
             } else {
-                result.formUnion(element.children(guaranteed: level))
+                result.formUnion(element.guaranteedChildren(at: level))
             }
         }
     }
@@ -155,11 +155,12 @@ public extension CellCollection {
     }
     
     mutating func expanding(to level: Level) {
+        // TODO: Simplify
         for (index, cell) in cells.enumerated() {
             guard cell.level > level else {
                 continue
             }
-            cells[index] = cell.parent(guaranteed: level)
+            cells[index] = cell.guaranteedParent(at: level)
         }
         normalize()
     }
@@ -283,11 +284,11 @@ extension CellCollection {
         while lhsIndex < lhs.endIndex, rhsIndex < rhs.endIndex {
             let lhsCell = lhs[lhsIndex]
             let rhsCell = rhs[rhsIndex]
-            let lhsMin = lhsCell.rangeMin
-            let rhsMin = rhsCell.rangeMin
+            let lhsMin = lhsCell.rawValueRangeMin
+            let rhsMin = rhsCell.rawValueRangeMin
             if lhsMin > rhsMin {
                 // Either rhsCell.contains(lhsCell) or the two cells are disjoint.
-                if (lhsCell.rawValue <= rhsCell.rangeMax) {
+                if (lhsCell.rawValue <= rhsCell.rawValueRangeMax) {
                     intersection.append(lhsCell)
                     lhsIndex += 1
                 } else {
@@ -301,7 +302,7 @@ extension CellCollection {
                 }
             } else if (lhsMin < rhsMin) {
                 // Identical to the code above with "lhsCell" and "rhsCell" reversed.
-                if rhsCell.rawValue <= lhsCell.rangeMax {
+                if rhsCell.rawValue <= lhsCell.rawValueRangeMax {
                     intersection.append(rhsCell)
                     rhsIndex += 1
                 } else {

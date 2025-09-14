@@ -24,7 +24,7 @@ public extension CellIdentifier {
     }
     
     init(_ coordinate: CartesianCoordinate, at level: Level) {
-        self = .leaf(at: coordinate).parent(guaranteed: level)
+        self = .leaf(at: coordinate).guaranteedParent(at: level)
     }
     
     var cell: Cell {
@@ -65,6 +65,40 @@ public extension CellIdentifier {
         ]
     }
     
+    var firstChild: Self {
+        .guaranteed(rawValue: rawValue - 3 * (leastSignificantBit >> 2))
+    }
+    
+    var lastChild: Self {
+        .guaranteed(rawValue: rawValue + 3 * (leastSignificantBit >> 2))
+    }
+    
+    func children(at level: Level) -> [ Self ] {
+        switch self.level {
+        case .min ..< level: guaranteedChildren(at: level)
+        case level: [ self ]
+        default: [ ]
+        }
+    }
+    
+    func firstChild(at level: Level) -> Self? {
+        switch self.level {
+        case .min ..< level: guaranteedFirstChild(at: level)
+        case level: self
+        default: nil
+        }
+    }
+    
+    func lastChild(at level: Level) -> Self? {
+        switch self.level {
+        case .min ..< level: guaranteedLastChild(at: level)
+        case level: self
+        default: nil
+        }
+    }
+}
+
+public extension CellIdentifier {
     var parent: CellIdentifier {
         let parentLeastSignificantBit = leastSignificantBit << 2
         return .guaranteed(
@@ -72,47 +106,66 @@ public extension CellIdentifier {
         )
     }
     
-    func children(at level: Level) -> [ Self ] {
-        switch self.level {
-        case .min ..< level: children(guaranteed: level)
-        case level: [ self ]
-        default: [ ]
-        }
-    }
-    
     func parent(at level: Level) -> Self? {
         switch self.level {
         case .min ..< level: nil
         case level: self
-        default: parent(guaranteed: level)
+        default: guaranteedParent(at: level)
         }
     }
 }
 
 public extension CellIdentifier {
     static func entirelyBefore(lhs: Self, rhs: Self) -> Bool {
-        lhs.rangeMax < rhs.rangeMin
+        lhs.rawValueRangeMax < rhs.rawValueRangeMin
     }
     
-    var range: ClosedRange<RawValue> {
-        let leastSignificantBit = self.leastSignificantBit - 1
-        return (rawValue - leastSignificantBit) ... (rawValue + leastSignificantBit)
+    var range: ClosedRange<Self> {
+        rangeMin ... rangeMax
     }
     
-    var rangeMax: RawValue {
-        rawValue + (leastSignificantBit - 1)
+    var rangeMax: Self {
+        .guaranteed(rawValue: rawValueRangeMax)
     }
     
-    var rangeMin: RawValue {
-        rawValue - (leastSignificantBit - 1)
+    var rangeMin: Self {
+        .guaranteed(rawValue: rawValueRangeMin)
     }
 
     func contains(_ other: CellIdentifier) -> Bool {
-        range.contains(other.rawValue)
+        rawValueRange.contains(other.rawValue)
     }
     
     func intersects(_ other: Self) -> Bool {
-        other.rangeMin <= self.rangeMax && other.rangeMax >= self.rangeMin
+        other.rawValueRangeMin <= self.rawValueRangeMax &&
+        other.rawValueRangeMax >= self.rawValueRangeMin
+    }
+}
+
+public extension CellIdentifier {
+    static func min(at level: Level) -> Self {
+        if level == .min {
+            whole(zone: .africa)
+        } else {
+            whole(zone: .africa).guaranteedFirstChild(at: level)
+        }
+    }
+    
+    static func max(at level: Level) -> Self {
+        if level == .min {
+            whole(zone: .south)
+        } else {
+            whole(zone: .south).guaranteedLastChild(at: level)
+        }
+    }
+    
+    static func range(at level: Level) -> ClosedRange<Self> {
+        if level == .min {
+            whole(zone: .africa) ... whole(zone: .south)
+        } else {
+            whole(zone: .africa).guaranteedFirstChild(at: level) ...
+            whole(zone: .south).guaranteedLastChild(at: level)
+        }
     }
 }
 
@@ -142,9 +195,9 @@ extension CellIdentifier : Strideable {
         
         let shift = (Level.max.rawValue - self.level.rawValue) * 2 + 1
         let steps: Stride = if n < 0 {
-            max(n, -Stride(self.rawValue >> shift))
+            Swift.max(n, -Stride(self.rawValue >> shift))
         } else {
-            min(n, Stride((Self.wrapOffset + leastSignificantBit - rawValue) >> shift))
+            Swift.min(n, Stride((Self.wrapOffset + leastSignificantBit - rawValue) >> shift))
         }
         
         return .guaranteed(rawValue: rawValue + (RawValue(steps) << shift))
@@ -233,19 +286,45 @@ extension CellIdentifier {
 }
 
 extension CellIdentifier {
-    func children(guaranteed level: Level) -> [ Self ] {
+    func guaranteedChildren(at level: Level) -> [ Self ] {
         let selfLeastSignificantBit = self.leastSignificantBit
         let childrenLeastSignificantBit = Self.leastSignificantBit(at: level)
-        return stride(
+        return Swift.stride(
             from: rawValue - selfLeastSignificantBit + childrenLeastSignificantBit,
             to: rawValue + selfLeastSignificantBit + childrenLeastSignificantBit,
             by: .init(childrenLeastSignificantBit << 1)
-        ).map(Self.guaranteed(rawValue:))
+        )
+        .map(Self.guaranteed(rawValue:))
     }
     
-    func parent(guaranteed level: Level) -> Self {
+    func guaranteedFirstChild(at level: Level) -> Self {
+        .guaranteed(rawValue: rawValue - leastSignificantBit + Self.leastSignificantBit(at: level))
+    }
+    
+    func guaranteedLastChild(at level: Level) -> Self {
+        .guaranteed(rawValue: rawValue + leastSignificantBit - Self.leastSignificantBit(at: level))
+    }
+}
+
+extension CellIdentifier {
+    func guaranteedParent(at level: Level) -> Self {
         let parentLeastSignificantBit = Self.leastSignificantBit(at: level)
         return .guaranteed(rawValue: (rawValue & (~parentLeastSignificantBit + 1)) | parentLeastSignificantBit)
+    }
+}
+
+extension CellIdentifier {
+    var rawValueRange: ClosedRange<RawValue> {
+        let leastSignificantBit = self.leastSignificantBit - 1
+        return (rawValue - leastSignificantBit) ... (rawValue + leastSignificantBit)
+    }
+    
+    var rawValueRangeMax: RawValue {
+        rawValue + (leastSignificantBit - 1)
+    }
+    
+    var rawValueRangeMin: RawValue {
+        rawValue - (leastSignificantBit - 1)
     }
 }
 

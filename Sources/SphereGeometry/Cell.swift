@@ -55,7 +55,7 @@ public extension Cell {
     }
     
     var identifier: CellIdentifier {
-        .leaf(at: coordinate).parent(guaranteed: level)
+        .leaf(at: coordinate).guaranteedParent(at: level)
     }
     
     var vertices: [ LeafCoordinate ] {

@@ -106,11 +106,17 @@ public extension CellIdentifier {
     }
 }
 
-extension CellIdentifier : Codable, Comparable, CustomStringConvertible, Equatable, Hashable, RawRepresentable, Sendable {
+extension CellIdentifier : Codable, Hashable, RawRepresentable, Sendable, Equatable {
+    
+}
+
+extension CellIdentifier : Comparable {
     public static func < (lhs: CellIdentifier, rhs: CellIdentifier) -> Bool {
         lhs.rawValue < rhs.rawValue
     }
-    
+}
+
+extension CellIdentifier : CustomStringConvertible {
     public var description: String {
         "#\(rawValue)"
     }

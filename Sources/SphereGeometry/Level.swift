@@ -70,23 +70,29 @@ public extension Level {
     }
 }
 
-extension Level : Comparable, Equatable, RawRepresentable, Sendable, Strideable {
+extension Level : Equatable, RawRepresentable, Sendable {
+    
+}
+
+extension Level : Comparable {
     public static func < (lhs: Level, rhs: Level) -> Bool {
         lhs.rawValue < rhs.rawValue
     }
-    
+}
+
+extension Level : Strideable {
     public func advanced(by n: Int8) -> Level {
         if n > 0 {
             if Self.max.rawValue - rawValue < n {
-                return Self.max
+                Self.max
             } else {
-                return .guaranteed(rawValue: rawValue + RawValue(n))
+                .guaranteed(rawValue: rawValue + RawValue(n))
             }
         } else {
             if rawValue < -n {
-                return Self.min
+                Self.min
             } else {
-                return .guaranteed(rawValue: RawValue(Stride(rawValue) + n))
+                .guaranteed(rawValue: RawValue(Stride(rawValue) + n))
             }
         }
     }

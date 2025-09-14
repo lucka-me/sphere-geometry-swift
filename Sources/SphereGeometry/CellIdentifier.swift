@@ -19,16 +19,6 @@ public struct CellIdentifier {
 }
 
 public extension CellIdentifier {
-    static let zoneBits: UInt8 = 3
-    
-    static func entirelyBefore(lhs: Self, rhs: Self) -> Bool {
-        lhs.rangeMax < rhs.rangeMin
-    }
-    
-    static func whole(zone: Zone) -> Self {
-        .guaranteed(rawValue: (RawValue(zone.rawValue) << positionBits) + leastSignificantBit(at: .min))
-    }
-    
     static func leaf(at coordinate: CartesianCoordinate) -> Self {
         return .leaf(at: coordinate.leafCoordinate)
     }
@@ -40,7 +30,31 @@ public extension CellIdentifier {
     var cell: Cell {
         .init(identifier: self)
     }
+}
+
+public extension CellIdentifier {
+    var level: Level {
+        .guaranteed(rawValue: Level.max.rawValue - (UInt8(rawValue.trailingZeroBitCount) >> 1))
+    }
+}
+
+public extension CellIdentifier {
+    static func whole(zone: Zone) -> Self {
+        .guaranteed(
+            rawValue: (RawValue(zone.rawValue) << positionBits) + leastSignificantBit(at: .min)
+        )
+    }
     
+    var isWholeZone: Bool {
+        rawValue & (Self.leastSignificantBit(at: .min) - 1) == 0
+    }
+    
+    var zone: Zone {
+        .init(rawValue: .init(rawValue >> Self.positionBits))!
+    }
+}
+
+public extension CellIdentifier {
     var children: [ Self ] {
         let childLeastSignificantBit = leastSignificantBit >> 2
         return [
@@ -51,17 +65,33 @@ public extension CellIdentifier {
         ]
     }
     
-    var isWholeZone: Bool {
-        rawValue & (Self.leastSignificantBit(at: .min) - 1) == 0
-    }
-    
-    var level: Level {
-        .guaranteed(rawValue: Level.max.rawValue - (UInt8(rawValue.trailingZeroBitCount) >> 1))
-    }
-    
     var parent: CellIdentifier {
         let parentLeastSignificantBit = leastSignificantBit << 2
-        return .guaranteed(rawValue: (rawValue & (~parentLeastSignificantBit + 1)) | parentLeastSignificantBit)
+        return .guaranteed(
+            rawValue: (rawValue & (~parentLeastSignificantBit + 1)) | parentLeastSignificantBit
+        )
+    }
+    
+    func children(at level: Level) -> [ Self ] {
+        switch self.level {
+        case .min ..< level: children(guaranteed: level)
+        case level: [ self ]
+        default: [ ]
+        }
+    }
+    
+    func parent(at level: Level) -> Self? {
+        switch self.level {
+        case .min ..< level: nil
+        case level: self
+        default: parent(guaranteed: level)
+        }
+    }
+}
+
+public extension CellIdentifier {
+    static func entirelyBefore(lhs: Self, rhs: Self) -> Bool {
+        lhs.rangeMax < rhs.rangeMin
     }
     
     var range: ClosedRange<RawValue> {
@@ -76,18 +106,6 @@ public extension CellIdentifier {
     var rangeMin: RawValue {
         rawValue - (leastSignificantBit - 1)
     }
-    
-    var zone: Zone {
-        .init(rawValue: .init(rawValue >> Self.positionBits))!
-    }
-    
-    func children(at level: Level) -> [ Self ] {
-        switch self.level {
-        case .min ..< level: children(guaranteed: level)
-        case level: [ self ]
-        default: [ ]
-        }
-    }
 
     func contains(_ other: CellIdentifier) -> Bool {
         range.contains(other.rawValue)
@@ -95,14 +113,6 @@ public extension CellIdentifier {
     
     func intersects(_ other: Self) -> Bool {
         other.rangeMin <= self.rangeMax && other.rangeMax >= self.rangeMin
-    }
-    
-    func parent(at level: Level) -> Self? {
-        switch self.level {
-        case .min ..< level: nil
-        case level: self
-        default: parent(guaranteed: level)
-        }
     }
 }
 
@@ -123,6 +133,8 @@ extension CellIdentifier : CustomStringConvertible {
 }
 
 extension CellIdentifier : Strideable {
+    private static let wrapOffset = RawValue(Zone.count) << positionBits
+    
     public func advanced(by n: Int64) -> CellIdentifier {
         guard n != .zero else {
             return self
@@ -153,61 +165,60 @@ extension CellIdentifier : Strideable {
 }
 
 extension CellIdentifier {
-    typealias Position = UInt64
-    
-    static let invertMask: UInt8 = 0x02
-    
-    static let positionBits: UInt8 = 2 * Level.max.rawValue + 1
-    static let positionMask: RawValue = RawValue.max >> zoneBits
-    
-    static let swapMask: UInt8 = 0x01
-    static let zoneMask: RawValue = 0b111 << positionBits
-    
-    static let wrapOffset = RawValue(Zone.count) << positionBits
-    
     static func guaranteed(rawValue: RawValue) -> Self {
         .init(guaranteed: rawValue)
-    }
-    
-    static func leaf(at coordinate: LeafCoordinate) -> Self {
-        var value = RawValue(coordinate.zone.rawValue) << (Self.positionBits - 1)
-        var bits = RawValue(coordinate.zone.rawValue & Self.swapMask)
-        for index : RawValue in (0 ... 7).reversed() {
-            let mask: RawValue = (1 << HilbertTable.lookupBits) - 1
-            bits += ((RawValue(coordinate.i) >> (index * HilbertTable.lookupBits)) & mask) << (HilbertTable.lookupBits + 2)
-            bits += ((RawValue(coordinate.j) >> (index * HilbertTable.lookupBits)) & mask) << 2
-            bits = .init(HilbertTable.positions[Int(bits)])
-            value |= (bits >> 2) << (index * 2 * HilbertTable.lookupBits)
-            bits &= RawValue(Self.swapMask | Self.invertMask)
-        }
-        return .guaranteed(rawValue: value * 2 + 1)
-    }
-    
-    static func leastSignificantBit(at level: Level) -> RawValue {
-        1 << (2 * (Level.max.rawValue - level.rawValue))
     }
     
     static func validate(_ value: RawValue) -> Bool {
         (value >> positionBits) < Zone.count && ((value & (~value &+ 1)) & 0x1555555555555555 != 0)
     }
+    
+    private init(guaranteed rawValue: RawValue) {
+        self.rawValue = rawValue
+    }
+}
 
+extension CellIdentifier {
+    typealias Position = UInt64
+    
+    static let zoneBits: UInt8 = 3
+    static let zoneMask: RawValue = 0b111 << positionBits
+    
+    static let positionBits: UInt8 = 2 * Level.max.rawValue + 1
+    static let positionMask: RawValue = RawValue.max >> zoneBits
+    
     init(zone: Zone, position: Position, level: Level) {
         let value = RawValue(zone.rawValue) << Self.positionBits + (position | 1)
         let leastSignificantBit = Self.leastSignificantBit(at: level)
         rawValue = (value & (~leastSignificantBit + 1)) | leastSignificantBit
     }
     
-    var leastSignificantBit: RawValue {
-        rawValue & (~rawValue + 1)
-    }
-    
     var position: Position {
         rawValue & Self.positionMask
+    }
+}
+
+extension CellIdentifier {
+    private static let leafInvertMask: UInt8 = 0x02
+    private static let leafSwapMask: UInt8 = 0x01
+    
+    static func leaf(at coordinate: LeafCoordinate) -> Self {
+        var value = RawValue(coordinate.zone.rawValue) << (Self.positionBits - 1)
+        var bits = RawValue(coordinate.zone.rawValue & Self.leafSwapMask)
+        for index : RawValue in (0 ... 7).reversed() {
+            let mask: RawValue = (1 << HilbertTable.lookupBits) - 1
+            bits += ((RawValue(coordinate.i) >> (index * HilbertTable.lookupBits)) & mask) << (HilbertTable.lookupBits + 2)
+            bits += ((RawValue(coordinate.j) >> (index * HilbertTable.lookupBits)) & mask) << 2
+            bits = .init(HilbertTable.positions[Int(bits)])
+            value |= (bits >> 2) << (index * 2 * HilbertTable.lookupBits)
+            bits &= RawValue(Self.leafSwapMask | Self.leafInvertMask)
+        }
+        return .guaranteed(rawValue: value * 2 + 1)
     }
     
     var leafCoordinate: LeafCoordinate {
         let zone = self.zone
-        var bits = RawValue(zone.rawValue & Self.swapMask)
+        var bits = RawValue(zone.rawValue & Self.leafSwapMask)
         var value : LeafCoordinate.Coordinate = .init(x: 0, y: 0)
         for index : RawValue in (0 ... 7).reversed() {
             let bitsCount = (index < 7) ? HilbertTable.lookupBits : (UInt64(Level.max.rawValue) - 7 * HilbertTable.lookupBits)
@@ -215,11 +226,13 @@ extension CellIdentifier {
             bits = .init(HilbertTable.cells[Int(bits)])
             value.x += UInt32(bits >> (HilbertTable.lookupBits + 2)) << (index * HilbertTable.lookupBits)
             value.y += UInt32((bits >> 2) & ((1 << HilbertTable.lookupBits) - 1)) << (index * HilbertTable.lookupBits)
-            bits &= RawValue(Self.swapMask | Self.invertMask)
+            bits &= RawValue(Self.leafSwapMask | Self.leafInvertMask)
         }
         return .init(zone: zone, coordinate: value)
     }
-    
+}
+
+extension CellIdentifier {
     func children(guaranteed level: Level) -> [ Self ] {
         let selfLeastSignificantBit = self.leastSignificantBit
         let childrenLeastSignificantBit = Self.leastSignificantBit(at: level)
@@ -236,8 +249,12 @@ extension CellIdentifier {
     }
 }
 
-fileprivate extension CellIdentifier {
-    init(guaranteed rawValue: RawValue) {
-        self.rawValue = rawValue
+extension CellIdentifier {
+    static func leastSignificantBit(at level: Level) -> RawValue {
+        1 << (2 * (Level.max.rawValue - level.rawValue))
+    }
+    
+    var leastSignificantBit: RawValue {
+        rawValue & (~rawValue + 1)
     }
 }

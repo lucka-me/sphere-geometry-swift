@@ -45,12 +45,11 @@ public extension LeafCoordinate {
 
 public extension LeafCoordinate {
     var cartesianCoordinate: CartesianCoordinate {
-        let st = SIMD2<Double>(coordinate) / Double(Self.scalarMax)
-        let stSign = sign(st - 0.5)
-        let stFlipped = st + stSign.replacing(with: 0, where: stSign .> [ 0, 0 ])
-        return .init(rawValue: zone.project(uv: stSign * (stFlipped * stFlipped * 4 - 1) * Double(1.0 / 3.0)))
+        cartesianCoordinate(with: .zero)
     }
-    
+}
+
+public extension LeafCoordinate {
     func round(to level: Level) -> Self {
         .init(zone: zone, coordinate: coordinate & (0 &- Self.step(at: level)))
     }
@@ -63,6 +62,18 @@ extension LeafCoordinate : Equatable {
 extension LeafCoordinate : CustomStringConvertible {
     public var description: String {
         "#\(zone), (\(coordinate.x),\(coordinate.y))"
+    }
+}
+
+extension LeafCoordinate {
+    func cartesianCoordinate(with offset: SIMD2<Double>) -> CartesianCoordinate {
+        let st = (SIMD2<Double>(coordinate) + offset) / Double(Self.scalarMax)
+        let stSign = sign(st - 0.5)
+        let stFlipped = st + stSign.replacing(with: 0, where: stSign .> [ 0, 0 ])
+        return .init(
+            rawValue: zone
+                .project(uv: stSign * (stFlipped * stFlipped * 4 - 1) * Double(1.0 / 3.0))
+        )
     }
 }
 

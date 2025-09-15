@@ -64,6 +64,13 @@ public extension Cell {
 }
 
 public extension Cell {
+    var center: CartesianCoordinate {
+        let offset = Double(LeafCoordinate.step(at: level)) / 2
+        return coordinate.cartesianCoordinate(with: .init(x: offset, y: offset))
+    }
+}
+
+public extension Cell {
     var area: Double {
         let step = LeafCoordinate.step(at: level)
         let lowerLeftVertex = coordinate.cartesianCoordinate

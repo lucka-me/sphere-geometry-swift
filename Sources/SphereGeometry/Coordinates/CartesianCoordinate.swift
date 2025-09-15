@@ -32,7 +32,7 @@ public extension CartesianCoordinate {
     }
     
     var leafCell: Cell {
-        .init(level: .max, coordinate: leafCoordinate)
+        .init(leafCoordinate, at: .max)
     }
 
     var leafCoordinate: LeafCoordinate {

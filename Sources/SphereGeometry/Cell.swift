@@ -12,14 +12,54 @@ public struct Cell {
     public let level: Level
     public let coordinate: LeafCoordinate
     
-    public init(identifier: CellIdentifier) {
+    public init(_ coordinate: LeafCoordinate, at level: Level) {
+        self.level = level
+        self.coordinate = coordinate.round(to: level)
+    }
+}
+
+public extension Cell {
+    init(identifier: CellIdentifier) {
         self.level = identifier.level
         self.coordinate = identifier.leafCoordinate.round(to: self.level)
     }
     
-    public init(_ coordinate: CartesianCoordinate, at level: Level) {
-        self.level = level
-        self.coordinate = coordinate.leafCoordinate.round(to: level)
+    var identifier: CellIdentifier {
+        .leaf(at: coordinate).guaranteedParent(at: level)
+    }
+}
+
+public extension Cell {
+    init(_ coordinate: CartesianCoordinate, at level: Level) {
+        self.init(coordinate.leafCoordinate, at: level)
+    }
+}
+
+public extension Cell {
+    var zone: Zone {
+        coordinate.zone
+    }
+}
+
+public extension Cell {
+    var children: [ Self ] {
+        let childLevel = level.advanced(by: 1)
+        let step = LeafCoordinate.step(at: childLevel)
+        return [
+            .guaranteed(coordinate, at: childLevel),
+            .guaranteed(
+                .init(zone: zone, coordinate: coordinate.coordinate &+ [ 0, step ]),
+                at: childLevel
+            ),
+            .guaranteed(
+                .init(zone: zone, coordinate: coordinate.coordinate &+ [ step, step ]),
+                at: childLevel
+            ),
+            .guaranteed(
+                .init(zone: zone, coordinate: coordinate.coordinate &+ [ step, 0 ]),
+                at: childLevel
+            )
+        ]
     }
 }
 
@@ -34,72 +74,58 @@ public extension Cell {
         Self.area(lowerLeftVertex, upperRightVertex, upperLeftVertex)
     }
     
-    var children: [ Self ] {
-        let childLevel = level.advanced(by: 1)
-        let step = LeafCoordinate.step(at: childLevel)
-        return [
-            .init(level: childLevel, coordinate: coordinate),
-            .init(
-                level: childLevel,
-                coordinate: .init(zone: zone, coordinate: coordinate.coordinate &+ [ 0, step ])
-            ),
-            .init(
-                level: childLevel,
-                coordinate: .init(zone: zone, coordinate: coordinate.coordinate &+ [ step, step ])
-            ),
-            .init(
-                level: childLevel,
-                coordinate: .init(zone: zone, coordinate: coordinate.coordinate &+ [ step, 0 ])
-            ),
-        ]
-    }
-    
-    var identifier: CellIdentifier {
-        .leaf(at: coordinate).guaranteedParent(at: level)
-    }
-    
     var vertices: [ LeafCoordinate ] {
         let step = LeafCoordinate.step(at: level)
         return VertexPosition.allCases.map { vertex(at: $0, step: step) }
     }
-    
-    var zone: Zone {
-        coordinate.zone
-    }
-    
+}
+
+public extension Cell {
     func intersects(_ other: Self) -> Bool {
         guard self.coordinate.zone == other.coordinate.zone else {
             return false
         }
         let selfStep = LeafCoordinate.step(at: self.level)
         let otherStep = LeafCoordinate.step(at: other.level)
-        guard
-            (self.coordinate.i ... self.coordinate.i + selfStep)
-                .overlaps(other.coordinate.i ... other.coordinate.i + otherStep),
-            (self.coordinate.j ... self.coordinate.j + selfStep)
-                .overlaps(other.coordinate.j ... other.coordinate.j + otherStep)
-        else {
-            return false
-        }
-        return true
+        
+        return (self.coordinate.i ... self.coordinate.i + selfStep)
+            .overlaps(other.coordinate.i ... other.coordinate.i + otherStep) &&
+        (self.coordinate.j ... self.coordinate.j + selfStep)
+            .overlaps(other.coordinate.j ... other.coordinate.j + otherStep)
     }
 }
 
 extension Cell {
-    enum VertexPosition {
+    static func guaranteed(_ coordinate: LeafCoordinate, at level: Level) -> Self {
+        .init(guaranteed: coordinate, at: level)
+    }
+    
+    private init(guaranteed coordinate: LeafCoordinate, at level: Level) {
+        self.level = level
+        self.coordinate = coordinate
+    }
+}
+
+extension Cell {
+    enum VertexPosition : CaseIterable {
         case lowerLeft
         case lowerRight
         case upperRight
         case upperLeft
-    }
-    
-    init(level: Level, coordinate: LeafCoordinate) {
-        self.level = level
-        self.coordinate = coordinate
+        
+        var offset: LeafCoordinate.Coordinate {
+            switch self {
+            case .lowerLeft: [ 0, 0 ]
+            case .lowerRight: [ 1, 0 ]
+            case .upperRight: [ 1, 1 ]
+            case .upperLeft: [ 0, 1 ]
+            }
+        }
     }
     
     func vertex(
-        at position: VertexPosition, step: LeafCoordinate.Scalar
+        at position: VertexPosition,
+        step: LeafCoordinate.Scalar
     ) -> LeafCoordinate {
         .init(
             zone: coordinate.zone,
@@ -115,27 +141,12 @@ extension Cell {
     }
 }
 
-extension Cell.VertexPosition : CaseIterable {
-    
-}
-
-extension Cell.VertexPosition {
-    var offset: LeafCoordinate.Coordinate {
-        switch self {
-        case .lowerLeft:
-            [ 0, 0 ]
-        case .lowerRight:
-            [ 1, 0 ]
-        case .upperRight:
-            [ 1, 1 ]
-        case .upperLeft:
-            [ 0, 1 ]
-        }
-    }
-}
-
 fileprivate extension Cell {
-    static func area(_ a: CartesianCoordinate, _ b: CartesianCoordinate, _ c: CartesianCoordinate) -> Double {
+    static func area(
+        _ a: CartesianCoordinate,
+        _ b: CartesianCoordinate,
+        _ c: CartesianCoordinate
+    ) -> Double {
         let angles = SIMD4(0, b.arc(to: c), c.arc(to: a), a.arc(to: b))
         let s = 0.5 * angles.sum()
         // Use l'Huilier's formula.

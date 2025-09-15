@@ -57,7 +57,7 @@ public extension Level {
     static let max: Self = .at.30
     
     static func clamp(_ rawValue: RawValue, min: Self = .min, max: Self = .max) -> Self {
-        .guaranteed(rawValue: rawValue.clamped(to: min.rawValue ... max.rawValue))
+        .guaranteed(rawValue: Swift.min(Swift.max(rawValue, min.rawValue), max.rawValue))
     }
     
     var averageArea: Double {

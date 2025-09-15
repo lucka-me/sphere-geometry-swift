@@ -19,17 +19,21 @@ public extension CLLocationCoordinate2D {
             z: sin(radianLatitude)
         )
     }
-    
+}
+
+public extension CLLocationCoordinate2D {
     var leafCell: Cell {
         .init(cartesianCoordinate, at: .max)
     }
     
-    var leafCellIdentifier : CellIdentifier {
-        .leaf(at: cartesianCoordinate)
-    }
-    
     func cell(at level: Level) -> Cell {
         .init(cartesianCoordinate, at: level)
+    }
+}
+
+public extension CLLocationCoordinate2D {
+    var leafCellIdentifier : CellIdentifier {
+        .leaf(at: cartesianCoordinate)
     }
     
     func cellIdentifier(at level: Level) -> CellIdentifier {
@@ -51,21 +55,13 @@ public extension LeafCoordinate {
 
 extension CLLocationCoordinate2D {
     var radianLatitude: Double {
-        get {
-            self.latitude * .pi / 180
-        }
-        set {
-            self.latitude = newValue * 180 / .pi
-        }
+        get { self.latitude * .pi / 180 }
+        set { self.latitude = newValue * 180 / .pi }
     }
     
     var radianLongitude: Double {
-        get {
-            self.longitude * .pi / 180
-        }
-        set {
-            self.longitude = newValue * 180 / .pi
-        }
+        get { self.longitude * .pi / 180 }
+        set { self.longitude = newValue * 180 / .pi }
     }
 }
 

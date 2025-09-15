@@ -24,7 +24,7 @@ public extension LeafCoordinate {
     
     static let scalarMax: Scalar = 1 << Level.max.rawValue
     static let scalarMiddle = scalarMax / 2
-
+    
     static func step(at level: Level) -> Scalar {
         1 << (Level.max.rawValue - level.rawValue)
     }
@@ -41,7 +41,9 @@ public extension LeafCoordinate {
     var j: Scalar {
         coordinate.y
     }
-    
+}
+
+public extension LeafCoordinate {
     var cartesianCoordinate: CartesianCoordinate {
         let st = SIMD2<Double>(coordinate) / Double(Self.scalarMax)
         let stSign = sign(st - 0.5)
@@ -50,12 +52,15 @@ public extension LeafCoordinate {
     }
     
     func round(to level: Level) -> Self {
-        let step = Self.step(at: level)
-        return .init(zone: zone, coordinate: coordinate & (0 &- step))
+        .init(zone: zone, coordinate: coordinate & (0 &- Self.step(at: level)))
     }
 }
 
-extension LeafCoordinate : Equatable, CustomStringConvertible {
+extension LeafCoordinate : Equatable {
+    
+}
+
+extension LeafCoordinate : CustomStringConvertible {
     public var description: String {
         "#\(zone), (\(coordinate.x),\(coordinate.y))"
     }
@@ -64,18 +69,12 @@ extension LeafCoordinate : Equatable, CustomStringConvertible {
 fileprivate extension Zone {
     func project(uv: SIMD2<Double>) -> SIMD3<Double> {
         switch self {
-        case .africa:
-            return .init(x: 1, y: uv.x, z: uv.y)
-        case .asia:
-            return .init(x: -uv.x, y: 1, z: uv.y)
-        case .north:
-            return .init(x: -uv.x, y: -uv.y, z: 1)
-        case .pacific:
-            return .init(x: -1, y: -uv.y, z: -uv.x)
-        case .america:
-            return .init(x: uv.y, y: -1, z: -uv.x)
-        case .south:
-            return .init(x: uv.y, y: uv.x, z: -1)
+        case .africa: .init(x: 1, y: uv.x, z: uv.y)
+        case .asia: .init(x: -uv.x, y: 1, z: uv.y)
+        case .north: .init(x: -uv.x, y: -uv.y, z: 1)
+        case .pacific: .init(x: -1, y: -uv.y, z: -uv.x)
+        case .america: .init(x: uv.y, y: -1, z: -uv.x)
+        case .south: .init(x: uv.y, y: uv.x, z: -1)
         }
     }
 }

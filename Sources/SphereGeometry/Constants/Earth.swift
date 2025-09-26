@@ -8,6 +8,6 @@
 import Foundation
 
 public enum Earth {
-    static let radius: Double = 6371010
-    static let area: Double = radius * radius * 4 * .pi
+    public static let radius: Double = 6371010
+    public static let area: Double = radius * radius * 4 * .pi
 }

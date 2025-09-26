@@ -7,11 +7,7 @@
 
 import Foundation
 
-public struct Earth {
-    private init() { }
-}
-
-public extension Earth {
+public enum Earth {
     static let radius: Double = 6371010
     static let area: Double = radius * radius * 4 * .pi
 }

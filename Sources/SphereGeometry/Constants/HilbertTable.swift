@@ -7,11 +7,7 @@
 
 import simd
 
-struct HilbertTable {
-    private init() { }
-}
-
-extension HilbertTable {
+enum HilbertTable {
     static let lookupBits : UInt64 = 4
 
     static let cells : [ UInt16 ] = [

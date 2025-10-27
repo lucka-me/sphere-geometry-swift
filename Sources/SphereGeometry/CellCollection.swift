@@ -18,17 +18,47 @@ public struct CellCollection {
     }
 }
 
+extension CellCollection : BinarySearchable, Equatable, Sendable {
+
+}
+
+extension CellCollection : ExpressibleByArrayLiteral {
+    public init(arrayLiteral elements: Element...) {
+        self.init(Array(elements))
+    }
+}
+
+extension CellCollection : RandomAccessCollection {
+    public subscript(position: UnderlyingSequence.Index) -> UnderlyingSequence.Element {
+        cells[position]
+    }
+    
+    public var startIndex: UnderlyingSequence.Index {
+        cells.startIndex
+    }
+    
+    public var endIndex: UnderlyingSequence.Index {
+        cells.endIndex
+    }
+}
+
 public extension CellCollection {
     typealias UnderlyingSequence = [ CellIdentifier ]
+}
 
+public extension CellCollection {
     static var wholeSphere: Self {
         .guaranteed(cells: Zone.allCases.map { .whole(zone: $0) })
     }
+}
 
+public extension CellCollection {
     static func guaranteed(cells: UnderlyingSequence) -> Self {
         .init(guaranteed: cells)
     }
-    
+}
+
+public extension CellCollection {
     func aligned(at level: Level) -> Set<Element> {
         cells.reduce(into: .init()) { result, element in
             if let parent = element.parent(at: level) {
@@ -40,15 +70,6 @@ public extension CellCollection {
         }
     }
     
-    func contains(_ cell: CellIdentifier) -> Bool {
-        let lower = self.lower(of: cell, comparedBy: Element.entirelyBefore(lhs:rhs:))
-        return lower != endIndex && self[lower].contains(cell)
-    }
-    
-    func difference(_ other: Self) -> Self {
-        .init(guaranteed: Self.makeDifference(lhs: self.cells, rhs: other))
-    }
-    
     func expand(to level: Level) -> Self {
         var result = Self.init(
             guaranteed: self.cells.map { $0.parent(at: level) ?? $0 }
@@ -57,10 +78,23 @@ public extension CellCollection {
         return result
     }
     
+    mutating func expanding(to level: Level) {
+        // TODO: Simplify
+        for (index, cell) in cells.enumerated() {
+            guard cell.level > level else {
+                continue
+            }
+            cells[index] = cell.guaranteedParent(at: level)
+        }
+        normalize()
+    }
+}
+
+public extension CellCollection {
     func index(after cell: CellIdentifier) -> UnderlyingSequence.Index {
         cells.upper(of: cell, comparedBy: CellIdentifier.entirelyBefore(lhs:rhs:))
     }
-    
+
     func index(after cell: CellIdentifier, since index: Index) -> Index {
         cells.upper(
             of: cell,
@@ -69,11 +103,19 @@ public extension CellCollection {
             comparedBy: CellIdentifier.entirelyBefore(lhs:rhs:)
         )
     }
-    
-    func intersection(_ other: Self) -> Self {
-        .init(guaranteed: Self.makeIntersection(lhs: self.cells, rhs: other.cells))
+}
+
+public extension CellCollection {
+    func difference(_ other: Self) -> Self {
+        .init(guaranteed: Self.makeDifference(lhs: self.cells, rhs: other))
     }
     
+    mutating func formDifference(_ other: Self) {
+        self.cells = Self.makeDifference(lhs: self.cells, rhs: other)
+    }
+}
+
+public extension CellCollection {
     func intersection(_ element: Element) -> Self {
         let lower = self.cells.lower(of: element, comparedBy: Element.entirelyBefore(lhs:rhs:))
         guard lower < self.cells.endIndex else {
@@ -87,12 +129,21 @@ public extension CellCollection {
         )
         return .guaranteed(cells: .init(self.cells[lower ..< upper]))
     }
+    
+    func intersection(_ other: Self) -> Self {
+        .init(guaranteed: Self.makeIntersection(lhs: self.cells, rhs: other.cells))
+    }
 
+    func intersects(_ element: Element) -> Bool {
+        let index = self.cells.lower(of: element, comparedBy: Element.entirelyBefore(lhs:rhs:))
+        return index < self.cells.endIndex && self.cells[index].intersects(element)
+    }
+    
     func intersects(_ other: Self) -> Bool {
         guard !self.isEmpty, !other.isEmpty else {
             return false
         }
-        
+
         var selfIndex = self.startIndex
         var otherIndex = other.startIndex
         while selfIndex < self.endIndex, otherIndex < other.endIndex {
@@ -121,15 +172,41 @@ public extension CellCollection {
         return false
     }
     
-    func intersects(_ element: Element) -> Bool {
-        let index = self.cells.lower(of: element, comparedBy: Element.entirelyBefore(lhs:rhs:))
-        return index < self.cells.endIndex && self.cells[index].intersects(element)
+    mutating func formIntersection(_ other: Self) {
+        self.cells = Self.makeIntersection(lhs: self.cells, rhs: other.cells)
+    }
+}
+
+public extension CellCollection {
+    func union(_ other: Self) -> Self {
+        .init(cells + other.cells)
+    }
+
+
+    mutating func formUnion(_ other: Self) {
+        guard !other.isEmpty else {
+            return
+        }
+        guard !self.isEmpty else {
+            cells = other.cells
+            return
+        }
+        cells.append(contentsOf: other.cells)
+        cells.sort()
+        normalize()
+    }
+}
+
+public extension CellCollection {
+    func contains(_ cell: CellIdentifier) -> Bool {
+        let lower = self.lower(of: cell, comparedBy: Element.entirelyBefore(lhs:rhs:))
+        return lower != endIndex && self[lower].contains(cell)
     }
     
     func isStrictSubset(of other: Self) -> Bool {
         other.isStrictSuperset(of: self)
     }
-    
+
     func isStrictSuperset(of other: Self) -> Bool {
         guard !other.isEmpty else { return true }
         guard !self.isEmpty else { return false }
@@ -152,43 +229,9 @@ public extension CellCollection {
         }
         return true
     }
-    
-    func union(_ other: Self) -> Self {
-        .init(cells + other.cells)
-    }
-    
-    mutating func expanding(to level: Level) {
-        // TODO: Simplify
-        for (index, cell) in cells.enumerated() {
-            guard cell.level > level else {
-                continue
-            }
-            cells[index] = cell.guaranteedParent(at: level)
-        }
-        normalize()
-    }
-    
-    mutating func formDifference(_ other: Self) {
-        self.cells = Self.makeDifference(lhs: self.cells, rhs: other)
-    }
-    
-    mutating func formIntersection(_ other: Self) {
-        self.cells = Self.makeIntersection(lhs: self.cells, rhs: other.cells)
-    }
-    
-    mutating func formUnion(_ other: Self) {
-        guard !other.isEmpty else {
-            return
-        }
-        guard !self.isEmpty else {
-            cells = other.cells
-            return
-        }
-        cells.append(contentsOf: other.cells)
-        cells.sort()
-        normalize()
-    }
-    
+}
+
+public extension CellCollection {
     mutating func insert(_ cell: CellIdentifier) -> (index: Index, inserted: Bool) {
         var (cellIndex, inserted) = cells.insert(cell)
         guard inserted else {
@@ -237,45 +280,66 @@ public extension CellCollection {
     }
 }
 
-extension CellCollection :
-    BidirectionalCollection,
-    Collection,
-    Equatable,
-    ExpressibleByArrayLiteral,
-    RandomAccessCollection,
-    Sendable,
-    Sequence {
-    public struct Iterator {
-        fileprivate let container: CellCollection
-        fileprivate var index: UnderlyingSequence.Index
-    }
-    
-    public init(arrayLiteral elements: Element...) {
-        self.init(Array(elements))
-    }
-    
-    public var startIndex: UnderlyingSequence.Index {
-        cells.startIndex
-    }
-    
-    public var endIndex: UnderlyingSequence.Index {
-        cells.endIndex
-    }
-    
-    public subscript(position: Int) -> UnderlyingSequence.Element {
-        cells[position]
-    }
-
-    public func index(after i: Int) -> Int {
-        cells.index(after: i)
-    }
-
-    public func makeIterator() -> Iterator {
-        .init(container: self, index: cells.startIndex)
+fileprivate extension CellCollection {
+    init(guaranteed cells: UnderlyingSequence) {
+        self.cells = cells
     }
 }
 
-extension CellCollection {
+fileprivate extension CellCollection {
+    func areSiblings(startAt startIndex: Index, and lastCell: CellIdentifier) -> Bool {
+        // A necessary (but not sufficient) condition is that the XOR of the four cells must be
+        // zero. This is also very fast to test.
+        guard
+            (
+                cells[startIndex].rawValue ^
+                cells[startIndex + 1].rawValue ^
+                cells[startIndex + 2].rawValue
+            ) == lastCell.rawValue
+        else {
+            return false
+        }
+
+        // Now we do a slightly more expensive but exact test. First, compute a mask that blocks
+        // out the two bits that encode the child position of "id" with respect to its parent, then
+        // check that the other three children all agree with "mask".
+        var mask = lastCell.leastSignificantBit << 1
+        mask = ~(mask + (mask << 1))
+        let masked = lastCell.rawValue & mask
+        return (cells[startIndex].rawValue & mask) == masked &&
+            (cells[startIndex + 1].rawValue & mask) == masked &&
+            (cells[startIndex + 2].rawValue & mask) == masked &&
+            !lastCell.isWholeZone
+    }
+    
+    mutating func normalize() {
+        var out = startIndex
+        for cell in cells {
+            // Check whether this cell is contained by the previous cell.
+            if out > startIndex, cells[out - 1].contains(cell) {
+                continue
+            }
+            // Discard any previous cells contained by this cell.
+            while out > startIndex, cell.contains(cells[out - 1]) {
+                out -= 1
+            }
+            // Check whether the last 3 elements plus "id" can be collapsed into a
+            // single parent cell.
+            var mutatedCell = cell
+            while out >= 3, areSiblings(startAt: out - 3, and: mutatedCell) {
+                mutatedCell = mutatedCell.parent
+                out -= 3
+            }
+            cells[out] = mutatedCell
+            out += 1
+        }
+        if cells.count != out {
+            cells.removeLast(cells.count - out)
+        }
+    }
+}
+
+fileprivate extension CellCollection {
     static func makeDifference(lhs: UnderlyingSequence, rhs: Self) -> UnderlyingSequence {
         // TODO: Use set operations like makeIntersection(lhs:rhs:) to improve performance
         var difference = UnderlyingSequence()
@@ -284,7 +348,23 @@ extension CellCollection {
         }
         return difference
     }
-    
+
+    func appendDifference(with cell: CellIdentifier, to sequence: inout UnderlyingSequence) {
+        guard self.intersects(cell) else {
+            sequence.append(cell)
+            return
+        }
+        guard !self.contains(cell) else {
+            return
+        }
+        let children = cell.children
+        for child in children {
+            appendDifference(with: child, to: &sequence)
+        }
+    }
+}
+
+fileprivate extension CellCollection {
     static func makeIntersection(
         lhs: UnderlyingSequence,
         rhs: UnderlyingSequence
@@ -338,87 +418,15 @@ extension CellCollection {
         }
         return intersection
     }
-    
-    init(guaranteed cells: UnderlyingSequence) {
-        self.cells = cells
-    }
-    
-    func appendDifference(with cell: CellIdentifier, to sequence: inout UnderlyingSequence) {
-        guard self.intersects(cell) else {
-            sequence.append(cell)
-            return
-        }
-        guard !self.contains(cell) else {
-            return
-        }
-        let children = cell.children
-        for child in children {
-            appendDifference(with: child, to: &sequence)
-        }
-    }
-    
-    func areSiblings(startAt startIndex: Index, and lastCell: CellIdentifier) -> Bool {
-        // A necessary (but not sufficient) condition is that the XOR of the
-        // four cells must be zero.  This is also very fast to test.
-        guard
-            (
-                cells[startIndex].rawValue ^
-                cells[startIndex + 1].rawValue ^
-                cells[startIndex + 2].rawValue
-            ) == lastCell.rawValue
-        else {
-            return false
-        }
-
-        // Now we do a slightly more expensive but exact test.  First, compute a
-        // mask that blocks out the two bits that encode the child position of
-        // "id" with respect to its parent, then check that the other three
-        // children all agree with "mask".
-        var mask = lastCell.leastSignificantBit << 1
-        mask = ~(mask + (mask << 1))
-        let masked = lastCell.rawValue & mask
-        return (cells[startIndex].rawValue & mask) == masked &&
-            (cells[startIndex + 1].rawValue & mask) == masked &&
-            (cells[startIndex + 2].rawValue & mask) == masked &&
-            !lastCell.isWholeZone
-    }
-    
-    mutating func normalize() {
-        var out = startIndex
-        for cell in cells {
-            // Check whether this cell is contained by the previous cell.
-            if out > startIndex, cells[out - 1].contains(cell) {
-                continue
-            }
-            // Discard any previous cells contained by this cell.
-            while out > startIndex, cell.contains(cells[out - 1]) {
-                out -= 1
-            }
-            // Check whether the last 3 elements plus "id" can be collapsed into a
-            // single parent cell.
-            var mutatedCell = cell
-            while out >= 3, areSiblings(startAt: out - 3, and: mutatedCell) {
-                mutatedCell = mutatedCell.parent
-                out -= 3
-            }
-            cells[out] = mutatedCell
-            out += 1
-        }
-        if cells.count != out {
-            cells.removeLast(cells.count - out)
-        }
-    }
 }
 
-extension CellCollection.Iterator : IteratorProtocol {
-    mutating public func next() -> CellCollection.Element? {
-        guard index < container.cells.count else { return nil }
-        index += 1
-        return container.cells[index - 1]
-    }
+fileprivate typealias UnderlyingBinarySearchable = BinarySearchable
+
+extension CellCollection.UnderlyingSequence : UnderlyingBinarySearchable {
+    
 }
 
-fileprivate extension Array where Element: Comparable {
+fileprivate extension CellCollection.UnderlyingSequence {
     @discardableResult
     mutating func insert(_ newElement: Element) -> (index: Index, inserted: Bool) {
         guard !isEmpty else {

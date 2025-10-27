@@ -1,13 +1,17 @@
 //
-//  File.swift
-//  
+//  BinarySearchable.swift
+//  SphereGeometry
 //
 //  Created by Lucka on 12/9/2024.
 //
 
 import Foundation
 
-extension BidirectionalCollection {
+public protocol BinarySearchable : BidirectionalCollection {
+    
+}
+
+public extension BinarySearchable {
     func lower<T>(
         of value: T,
         from startIndex: Index,
@@ -32,7 +36,7 @@ extension BidirectionalCollection {
     func lower<T>(of value: T, comparedBy compare: (Element, T) -> Bool) -> Index {
         return lower(of: value, from: startIndex, to: endIndex, comparedBy: compare)
     }
-
+    
     func upper<T>(
         of value: T,
         from startIndex: Index,
@@ -60,7 +64,7 @@ extension BidirectionalCollection {
     }
 }
 
-extension BidirectionalCollection where Element: Comparable {
+public extension BinarySearchable where Element: Comparable {
     func lower(of value: Element, from startIndex: Index, to endIndex: Index) -> Index {
         return lower(of: value, from: startIndex, to: endIndex) { $0 < $1 }
     }

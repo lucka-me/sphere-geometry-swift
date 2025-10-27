@@ -77,8 +77,9 @@ public extension Cell {
         let lowerRightVertex = vertex(at: .lowerRight, step: step).cartesianCoordinate
         let upperRightVertex = vertex(at: .upperRight, step: step).cartesianCoordinate
         let upperLeftVertex = vertex(at: .upperLeft, step: step).cartesianCoordinate
+        
         return Self.area(lowerLeftVertex, lowerRightVertex, upperRightVertex) +
-        Self.area(lowerLeftVertex, upperRightVertex, upperLeftVertex)
+            Self.area(lowerLeftVertex, upperRightVertex, upperLeftVertex)
     }
     
     var vertices: [ LeafCoordinate ] {
@@ -92,13 +93,31 @@ public extension Cell {
         guard self.coordinate.zone == other.coordinate.zone else {
             return false
         }
+        
         let selfStep = LeafCoordinate.step(at: self.level)
         let otherStep = LeafCoordinate.step(at: other.level)
         
-        return (self.coordinate.i ... self.coordinate.i + selfStep)
-            .overlaps(other.coordinate.i ... other.coordinate.i + otherStep) &&
-        (self.coordinate.j ... self.coordinate.j + selfStep)
-            .overlaps(other.coordinate.j ... other.coordinate.j + otherStep)
+        if self.coordinate.i <= other.coordinate.i {
+            guard other.coordinate.i <= self.coordinate.i + selfStep else {
+                return false
+            }
+        } else {
+            guard self.coordinate.i <= other.coordinate.i + otherStep else {
+                return false
+            }
+        }
+        
+        if self.coordinate.j <= other.coordinate.j {
+            guard other.coordinate.j <= self.coordinate.j + selfStep else {
+                return false
+            }
+        } else {
+            guard self.coordinate.j <= other.coordinate.j + otherStep else {
+                return false
+            }
+        }
+        
+        return true
     }
 }
 
@@ -143,7 +162,9 @@ extension Cell {
     func vertex(at position: VertexPosition) -> LeafCoordinate {
         .init(
             zone: coordinate.zone,
-            coordinate: coordinate.coordinate &+ (position.offset &* LeafCoordinate.step(at: level))
+            coordinate: coordinate.coordinate &+ (
+                position.offset &* LeafCoordinate.step(at: level)
+            )
         )
     }
 }
@@ -157,13 +178,15 @@ fileprivate extension Cell {
         let angles = SIMD4(0, b.arc(to: c), c.arc(to: a), a.arc(to: b))
         let s = 0.5 * angles.sum()
         // Use l'Huilier's formula.
-        let tangentProduct: Double
-        if #available(iOS 15.0, macOS 12.0, watchOS 8.0, *) {
-            let components: SIMD4 = tan(0.5 * (s - angles))
-            tangentProduct = components.w * components.x * components.y * components.z
+        let components = if #available(iOS 15.0, macOS 12.0, watchOS 8.0, *) {
+            tan(0.5 * (s - angles))
         } else {
-            let components: SIMD4 = 0.5 * (s - angles)
-            tangentProduct = tan(components.w) * tan(components.x) * tan(components.y) * tan(components.z)
+            0.5 * (s - angles)
+        }
+        let tangentProduct = if #available(iOS 15.0, macOS 12.0, watchOS 8.0, *) {
+            components.w * components.x * components.y * components.z
+        } else {
+            tan(components.w) * tan(components.x) * tan(components.y) * tan(components.z)
         }
         
         return 4 * atan(sqrt(max(0.0, tangentProduct))) * Earth.radius * Earth.radius

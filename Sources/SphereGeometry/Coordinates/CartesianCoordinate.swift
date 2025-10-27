@@ -63,7 +63,12 @@ public extension CartesianCoordinate {
     }
     
     var zone: Zone {
-        var index = rawValue.maxAbsoluteIndex
+        let absolute = abs(rawValue)
+        var index = if absolute[0] > absolute[1] {
+            absolute[0] > absolute[2] ? 0 : 2
+        } else {
+            absolute[1] > absolute[2] ? 1 : 2
+        }
         if (rawValue[index] < 0) {
             index += 3
         }
@@ -77,15 +82,6 @@ public extension CartesianCoordinate {
 
 extension CartesianCoordinate : RawRepresentable {
     
-}
-
-fileprivate extension SIMD3 where Scalar == Double {
-    var maxAbsoluteIndex : Int {
-        let absSelf = abs(self)
-        return absSelf[0] > absSelf[1]
-            ? (absSelf[0] > absSelf[2] ? 0 : 2)
-            : (absSelf[1] > absSelf[2] ? 1 : 2)
-    }
 }
 
 fileprivate extension Zone {

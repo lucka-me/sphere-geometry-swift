@@ -11,7 +11,7 @@ public struct Level {
     public let rawValue: UInt8
     
     public init?(rawValue: RawValue) {
-        guard Self.min.rawValue <= rawValue && rawValue <= Self.max.rawValue else {
+        guard Self.min.rawValue <= rawValue, rawValue <= Self.max.rawValue else {
             return nil
         }
         self.rawValue = rawValue
@@ -85,13 +85,13 @@ extension Level : Strideable {
     public func advanced(by n: Int8) -> Level {
         if n > 0 {
             if Self.max.rawValue - rawValue < n {
-                Self.max
+                .max
             } else {
                 .guaranteed(rawValue: rawValue + RawValue(n))
             }
         } else {
             if rawValue < -n {
-                Self.min
+                .min
             } else {
                 .guaranteed(rawValue: RawValue(Stride(rawValue) + n))
             }

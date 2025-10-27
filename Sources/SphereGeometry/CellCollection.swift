@@ -80,7 +80,10 @@ public extension CellCollection {
             return .init()
         }
         let upper = self.cells.upper(
-            of: element, from: lower, to: self.cells.endIndex, comparedBy: Element.entirelyBefore(lhs:rhs:)
+            of: element,
+            from: lower,
+            to: self.cells.endIndex,
+            comparedBy: Element.entirelyBefore(lhs:rhs:)
         )
         return .guaranteed(cells: .init(self.cells[lower ..< upper]))
     }
@@ -195,9 +198,9 @@ public extension CellCollection {
             return (cellIndex - 1, false)
         }
         var iterateIndex = cellIndex
-        while iterateIndex < endIndex && (iterateIndex - cellIndex) < 4 {
+        while iterateIndex < endIndex, (iterateIndex - cellIndex) < 4 {
             // Check whether this cell is contained by the previous cell.
-            if iterateIndex > startIndex && cells[iterateIndex - 1].contains(cells[iterateIndex]) {
+            if iterateIndex > startIndex, cells[iterateIndex - 1].contains(cells[iterateIndex]) {
                 cells.remove(at: iterateIndex)
                 if cellIndex == iterateIndex {
                     cellIndex -= 1
@@ -205,7 +208,10 @@ public extension CellCollection {
                 continue
             }
             // Discard any previous cells contained by this cell.
-            while iterateIndex > startIndex && cells[iterateIndex].contains(cells[iterateIndex - 1]) {
+            while
+                iterateIndex > startIndex,
+                cells[iterateIndex].contains(cells[iterateIndex - 1])
+            {
                 cells.remove(at: iterateIndex - 1)
                 iterateIndex -= 1
                 if cellIndex > iterateIndex {
@@ -214,7 +220,10 @@ public extension CellCollection {
             }
             // Check whether the last 3 elements plus "id" can be collapsed into a
             // single parent cell.
-            while iterateIndex > 3 && areSiblings(startAt: iterateIndex - 3, and: cells[iterateIndex]) {
+            while
+                iterateIndex > 3,
+                areSiblings(startAt: iterateIndex - 3, and: cells[iterateIndex])
+            {
                 cells[iterateIndex] = cells[iterateIndex].parent
                 cells.removeSubrange(iterateIndex - 3 ..< iterateIndex)
                 iterateIndex -= 3
@@ -276,7 +285,10 @@ extension CellCollection {
         return difference
     }
     
-    static func makeIntersection(lhs: UnderlyingSequence, rhs: UnderlyingSequence) -> UnderlyingSequence {
+    static func makeIntersection(
+        lhs: UnderlyingSequence,
+        rhs: UnderlyingSequence
+    ) -> UnderlyingSequence {
         // TODO: Modify self.cells to improve performance?
         var intersection = UnderlyingSequence()
         var lhsIndex = lhs.startIndex
@@ -348,7 +360,13 @@ extension CellCollection {
     func areSiblings(startAt startIndex: Index, and lastCell: CellIdentifier) -> Bool {
         // A necessary (but not sufficient) condition is that the XOR of the
         // four cells must be zero.  This is also very fast to test.
-        guard (cells[startIndex].rawValue ^ cells[startIndex + 1].rawValue ^ cells[startIndex + 2].rawValue) == lastCell.rawValue else {
+        guard
+            (
+                cells[startIndex].rawValue ^
+                cells[startIndex + 1].rawValue ^
+                cells[startIndex + 2].rawValue
+            ) == lastCell.rawValue
+        else {
             return false
         }
 
@@ -359,27 +377,27 @@ extension CellCollection {
         var mask = lastCell.leastSignificantBit << 1
         mask = ~(mask + (mask << 1))
         let masked = lastCell.rawValue & mask
-        return ((cells[startIndex].rawValue & mask) == masked &&
-                (cells[startIndex + 1].rawValue & mask) == masked &&
-                (cells[startIndex + 2].rawValue & mask) == masked &&
-                !lastCell.isWholeZone);
+        return (cells[startIndex].rawValue & mask) == masked &&
+            (cells[startIndex + 1].rawValue & mask) == masked &&
+            (cells[startIndex + 2].rawValue & mask) == masked &&
+            !lastCell.isWholeZone
     }
     
     mutating func normalize() {
         var out = startIndex
         for cell in cells {
             // Check whether this cell is contained by the previous cell.
-            if out > startIndex && cells[out - 1].contains(cell) {
+            if out > startIndex, cells[out - 1].contains(cell) {
                 continue
             }
             // Discard any previous cells contained by this cell.
-            while out > startIndex && cell.contains(cells[out - 1]) {
+            while out > startIndex, cell.contains(cells[out - 1]) {
                 out -= 1
             }
             // Check whether the last 3 elements plus "id" can be collapsed into a
             // single parent cell.
             var mutatedCell = cell
-            while out >= 3 && areSiblings(startAt: out - 3, and: mutatedCell) {
+            while out >= 3, areSiblings(startAt: out - 3, and: mutatedCell) {
                 mutatedCell = mutatedCell.parent
                 out -= 3
             }

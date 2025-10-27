@@ -71,8 +71,9 @@ extension LeafCoordinate {
         let stSign = sign(st - 0.5)
         let stFlipped = st + stSign.replacing(with: 0, where: stSign .> [ 0, 0 ])
         return .init(
-            rawValue: zone
-                .project(uv: stSign * (stFlipped * stFlipped * 4 - 1) * Double(1.0 / 3.0))
+            rawValue: zone.project(
+                uv: stSign * (stFlipped * stFlipped * 4 - 1) * Double(1.0 / 3.0)
+            )
         )
     }
 }
@@ -80,12 +81,12 @@ extension LeafCoordinate {
 fileprivate extension Zone {
     func project(uv: SIMD2<Double>) -> SIMD3<Double> {
         switch self {
-        case .africa: .init(x: 1, y: uv.x, z: uv.y)
-        case .asia: .init(x: -uv.x, y: 1, z: uv.y)
-        case .north: .init(x: -uv.x, y: -uv.y, z: 1)
-        case .pacific: .init(x: -1, y: -uv.y, z: -uv.x)
-        case .america: .init(x: uv.y, y: -1, z: -uv.x)
-        case .south: .init(x: uv.y, y: uv.x, z: -1)
+        case .africa:   .init(x:     1, y:  uv.x, z:  uv.y)
+        case .asia:     .init(x: -uv.x, y:     1, z:  uv.y)
+        case .north:    .init(x: -uv.x, y: -uv.y, z:     1)
+        case .pacific:  .init(x:    -1, y: -uv.y, z: -uv.x)
+        case .america:  .init(x:  uv.y, y:    -1, z: -uv.x)
+        case .south:    .init(x:  uv.y, y:  uv.x, z:    -1)
         }
     }
 }

@@ -1,13 +1,13 @@
 //
 //  HilbertTable.swift
-//
+//  SphereGeometry
 //
 //  Created by Lucka on 16/8/2024.
 //
 
 import simd
 
-enum HilbertTable {
+internal enum HilbertTable {
     static let lookupBits : UInt64 = 4
 
     static let cells : [ UInt16 ] = [

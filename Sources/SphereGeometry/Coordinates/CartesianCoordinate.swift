@@ -1,6 +1,6 @@
 //
 //  CartesianCoordinate.swift
-//
+//  SphereGeometry
 //
 //  Created by Lucka on 13/8/2024.
 //
@@ -14,6 +14,10 @@ public struct CartesianCoordinate {
     public init(rawValue: SIMD3<Double>) {
         self.rawValue = normalize(rawValue)
     }
+}
+
+extension CartesianCoordinate : RawRepresentable {
+    
 }
 
 public extension CartesianCoordinate {
@@ -78,10 +82,6 @@ public extension CartesianCoordinate {
     func arc(to other: Self) -> Double {
         acos(dot(self.rawValue, other.rawValue))
     }
-}
-
-extension CartesianCoordinate : RawRepresentable {
-    
 }
 
 fileprivate extension Zone {

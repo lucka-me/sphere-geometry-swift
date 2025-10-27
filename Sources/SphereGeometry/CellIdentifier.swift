@@ -1,6 +1,6 @@
 //
 //  CellIdentifier.swift
-//
+//  SphereGeometry
 //
 //  Created by Lucka on 13/8/2024.
 //
@@ -15,6 +15,60 @@ public struct CellIdentifier {
             return nil
         }
         self.rawValue = rawValue
+    }
+}
+
+extension CellIdentifier : Codable, Hashable, RawRepresentable, Sendable {
+    
+}
+
+extension CellIdentifier : Comparable {
+    public static func < (lhs: CellIdentifier, rhs: CellIdentifier) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+}
+
+extension CellIdentifier : Equatable {
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.rawValue == rhs.rawValue
+    }
+}
+
+extension CellIdentifier : CustomStringConvertible {
+    public var description: String {
+        "#\(rawValue)"
+    }
+}
+
+extension CellIdentifier : Strideable {
+    private static let wrapOffset = RawValue(Zone.count) << positionBits
+    
+    public func advanced(by n: Int64) -> CellIdentifier {
+        guard n != .zero else {
+            return self
+        }
+        
+        let shift = (Level.max.rawValue - self.level.rawValue) * 2 + 1
+        let steps: Stride = if n < 0 {
+            Swift.max(n, -Stride(self.rawValue >> shift))
+        } else {
+            Swift.min(n, Stride((Self.wrapOffset + leastSignificantBit - rawValue) >> shift))
+        }
+        
+        return .guaranteed(rawValue: rawValue + (RawValue(steps) << shift))
+    }
+    
+    public func distance(to other: CellIdentifier) -> Int64 {
+        guard self != other else {
+            return 0
+        }
+        
+        let shift = (Level.max.rawValue - self.level.rawValue) * 2 + 1
+        return if other > self {
+            .init((other.rawValue - self.rawValue) >> shift)
+        } else {
+            -.init((self.rawValue - other.rawValue) >> shift)
+        }
     }
 }
 
@@ -169,96 +223,7 @@ public extension CellIdentifier {
     }
 }
 
-extension CellIdentifier : Codable, Hashable, RawRepresentable, Sendable {
-    
-}
-
-extension CellIdentifier : Comparable {
-    public static func < (lhs: CellIdentifier, rhs: CellIdentifier) -> Bool {
-        lhs.rawValue < rhs.rawValue
-    }
-}
-
-extension CellIdentifier : Equatable {
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.rawValue == rhs.rawValue
-    }
-}
-
-extension CellIdentifier : CustomStringConvertible {
-    public var description: String {
-        "#\(rawValue)"
-    }
-}
-
-extension CellIdentifier : Strideable {
-    private static let wrapOffset = RawValue(Zone.count) << positionBits
-    
-    public func advanced(by n: Int64) -> CellIdentifier {
-        guard n != .zero else {
-            return self
-        }
-        
-        let shift = (Level.max.rawValue - self.level.rawValue) * 2 + 1
-        let steps: Stride = if n < 0 {
-            Swift.max(n, -Stride(self.rawValue >> shift))
-        } else {
-            Swift.min(n, Stride((Self.wrapOffset + leastSignificantBit - rawValue) >> shift))
-        }
-        
-        return .guaranteed(rawValue: rawValue + (RawValue(steps) << shift))
-    }
-    
-    public func distance(to other: CellIdentifier) -> Int64 {
-        guard self != other else {
-            return 0
-        }
-        
-        let shift = (Level.max.rawValue - self.level.rawValue) * 2 + 1
-        return if other > self {
-            .init((other.rawValue - self.rawValue) >> shift)
-        } else {
-            -.init((self.rawValue - other.rawValue) >> shift)
-        }
-    }
-}
-
-extension CellIdentifier {
-    static func guaranteed(rawValue: RawValue) -> Self {
-        .init(guaranteed: rawValue)
-    }
-    
-    static func validate(_ value: RawValue) -> Bool {
-        (value >> positionBits) < Zone.count &&
-        ((value & (~value &+ 1)) & 0x1555555555555555 != 0)
-    }
-    
-    private init(guaranteed rawValue: RawValue) {
-        self.rawValue = rawValue
-    }
-}
-
-extension CellIdentifier {
-    typealias Position = UInt64
-    
-    static let zoneBits: UInt8 = 3
-    static let zoneMask: RawValue = 0b111 << positionBits
-    
-    static let positionBits: UInt8 = 2 * Level.max.rawValue + 1
-    static let positionMask: RawValue = RawValue.max >> zoneBits
-    
-    init(zone: Zone, position: Position, level: Level) {
-        let value = RawValue(zone.rawValue) << Self.positionBits + (position | 1)
-        let leastSignificantBit = Self.leastSignificantBit(at: level)
-        rawValue = (value & (~leastSignificantBit + 1)) | leastSignificantBit
-    }
-    
-    var position: Position {
-        rawValue & Self.positionMask
-    }
-}
-
-extension CellIdentifier {
+internal extension CellIdentifier {
     private static let leafInvertMask: UInt8 = 0x02
     private static let leafSwapMask: UInt8 = 0x01
     
@@ -308,7 +273,7 @@ extension CellIdentifier {
     }
 }
 
-extension CellIdentifier {
+internal extension CellIdentifier {
     func guaranteedChildren(at level: Level) -> [ Self ] {
         let selfLeastSignificantBit = self.leastSignificantBit
         let childrenLeastSignificantBit = Self.leastSignificantBit(at: level)
@@ -333,7 +298,7 @@ extension CellIdentifier {
     }
 }
 
-extension CellIdentifier {
+internal extension CellIdentifier {
     func guaranteedParent(at level: Level) -> Self {
         let parentLeastSignificantBit = Self.leastSignificantBit(at: level)
         return .guaranteed(
@@ -342,7 +307,7 @@ extension CellIdentifier {
     }
 }
 
-extension CellIdentifier {
+internal extension CellIdentifier {
     var rawValueRange: ClosedRange<RawValue> {
         let leastSignificantBit = self.leastSignificantBit - 1
         return (rawValue - leastSignificantBit) ... (rawValue + leastSignificantBit)
@@ -357,12 +322,47 @@ extension CellIdentifier {
     }
 }
 
-extension CellIdentifier {
+internal extension CellIdentifier {
     static func leastSignificantBit(at level: Level) -> RawValue {
         1 << (2 * (Level.max.rawValue - level.rawValue))
     }
     
     var leastSignificantBit: RawValue {
         rawValue & (~rawValue + 1)
+    }
+}
+
+fileprivate extension CellIdentifier {
+    typealias Position = UInt64
+    
+    static let zoneBits: UInt8 = 3
+    static let zoneMask: RawValue = 0b111 << positionBits
+    
+    static let positionBits: UInt8 = 2 * Level.max.rawValue + 1
+    static let positionMask: RawValue = RawValue.max >> zoneBits
+    
+    init(zone: Zone, position: Position, level: Level) {
+        let value = RawValue(zone.rawValue) << Self.positionBits + (position | 1)
+        let leastSignificantBit = Self.leastSignificantBit(at: level)
+        rawValue = (value & (~leastSignificantBit + 1)) | leastSignificantBit
+    }
+    
+    var position: Position {
+        rawValue & Self.positionMask
+    }
+}
+
+fileprivate extension CellIdentifier {
+    static func guaranteed(rawValue: RawValue) -> Self {
+        .init(guaranteed: rawValue)
+    }
+    
+    static func validate(_ value: RawValue) -> Bool {
+        (value >> positionBits) < Zone.count &&
+        ((value & (~value &+ 1)) & 0x1555555555555555 != 0)
+    }
+    
+    private init(guaranteed rawValue: RawValue) {
+        self.rawValue = rawValue
     }
 }

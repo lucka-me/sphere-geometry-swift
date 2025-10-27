@@ -1,6 +1,6 @@
 //
 //  CLLocationCoordinate2D+SphereGeometry.swift
-//
+//  SphereGeometry
 //
 //  Created by Lucka on 2/9/2024.
 //
@@ -53,7 +53,7 @@ public extension LeafCoordinate {
     }
 }
 
-extension CLLocationCoordinate2D {
+fileprivate extension CLLocationCoordinate2D {
     var radianLatitude: Double {
         get { self.latitude * .pi / 180 }
         set { self.latitude = newValue * 180 / .pi }

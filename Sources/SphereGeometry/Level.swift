@@ -1,6 +1,6 @@
 //
 //  Constants.swift
-//  
+//  SphereGeometry
 //
 //  Created by Lucka on 13/8/2024.
 //
@@ -15,6 +15,44 @@ public struct Level {
             return nil
         }
         self.rawValue = rawValue
+    }
+}
+
+extension Level : RawRepresentable, Sendable {
+    
+}
+
+extension Level : Comparable {
+    public static func < (lhs: Level, rhs: Level) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+}
+
+extension Level : Equatable {
+    public static func == (lhs: Level, rhs: Level) -> Bool {
+        lhs.rawValue == rhs.rawValue
+    }
+}
+
+extension Level : Strideable {
+    public func advanced(by n: Int8) -> Level {
+        if n > 0 {
+            if Self.max.rawValue - rawValue < n {
+                .max
+            } else {
+                .guaranteed(rawValue: rawValue + RawValue(n))
+            }
+        } else {
+            if rawValue < -n {
+                .min
+            } else {
+                .guaranteed(rawValue: RawValue(Stride(rawValue) + n))
+            }
+        }
+    }
+    
+    public func distance(to other: Level) -> Int8 {
+        .init(rawValue.distance(to: other.rawValue))
     }
 }
 
@@ -65,45 +103,7 @@ public extension Level {
     }
 }
 
-extension Level : RawRepresentable, Sendable {
-    
-}
-
-extension Level : Comparable {
-    public static func < (lhs: Level, rhs: Level) -> Bool {
-        lhs.rawValue < rhs.rawValue
-    }
-}
-
-extension Level : Equatable {
-    public static func == (lhs: Level, rhs: Level) -> Bool {
-        lhs.rawValue == rhs.rawValue
-    }
-}
-
-extension Level : Strideable {
-    public func advanced(by n: Int8) -> Level {
-        if n > 0 {
-            if Self.max.rawValue - rawValue < n {
-                .max
-            } else {
-                .guaranteed(rawValue: rawValue + RawValue(n))
-            }
-        } else {
-            if rawValue < -n {
-                .min
-            } else {
-                .guaranteed(rawValue: RawValue(Stride(rawValue) + n))
-            }
-        }
-    }
-    
-    public func distance(to other: Level) -> Int8 {
-        .init(rawValue.distance(to: other.rawValue))
-    }
-}
-
-extension Level {
+internal extension Level {
     static func guaranteed(rawValue: RawValue) -> Self {
         .init(guaranteed: rawValue)
     }

@@ -1,6 +1,6 @@
 //
 //  Earth.swift
-//
+//  SphereGeometry
 //
 //  Created by Lucka on 18/8/2024.
 //

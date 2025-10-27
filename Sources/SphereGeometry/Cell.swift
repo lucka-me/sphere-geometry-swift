@@ -1,6 +1,6 @@
 //
 //  Cell.swift
-//  
+//  SphereGeometry
 //
 //  Created by Lucka on 1/9/2024.
 //
@@ -121,18 +121,18 @@ public extension Cell {
     }
 }
 
-extension Cell {
+fileprivate extension Cell {
     static func guaranteed(_ coordinate: LeafCoordinate, at level: Level) -> Self {
         .init(guaranteed: coordinate, at: level)
     }
     
-    private init(guaranteed coordinate: LeafCoordinate, at level: Level) {
+    init(guaranteed coordinate: LeafCoordinate, at level: Level) {
         self.level = level
         self.coordinate = coordinate
     }
 }
 
-extension Cell {
+fileprivate extension Cell {
     enum VertexPosition : CaseIterable {
         case lowerLeft
         case lowerRight

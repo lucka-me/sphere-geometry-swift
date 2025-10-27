@@ -1,6 +1,6 @@
 //
 //  Zone.swift
-//
+//  SphereGeometry
 //
 //  Created by Lucka on 13/8/2024.
 //
@@ -16,12 +16,16 @@ public enum Zone : UInt8 {
     case south      = 5
 }
 
-public extension Zone {
-    static let count: RawValue = 6
+extension Zone : CaseIterable, Hashable {
+    
 }
 
-extension Zone : CaseIterable, Comparable, Hashable {
+extension Zone : Comparable {
     public static func < (lhs: Zone, rhs: Zone) -> Bool {
         lhs.rawValue < rhs.rawValue
     }
+}
+
+public extension Zone {
+    static let count: RawValue = 6
 }

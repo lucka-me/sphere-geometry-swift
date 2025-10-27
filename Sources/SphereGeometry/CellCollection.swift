@@ -1,6 +1,6 @@
 //
 //  CellCollection.swift
-//
+//  SphereGeometry
 //
 //  Created by Lucka on 5/9/2024.
 //

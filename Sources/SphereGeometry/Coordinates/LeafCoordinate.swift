@@ -1,6 +1,6 @@
 //
 //  CellCoordinate.swift
-//
+//  SphereGeometry
 //
 //  Created by Lucka on 15/8/2024.
 //
@@ -8,14 +8,23 @@
 import simd
 
 ///< (I, J) Coordinate
-///<    Leaf-cell coordinates.  "i" and "j" are integers in the range
-///<    [0,(2**30)-1] that identify a particular leaf cell on the given face.
-///<    The (i, j) coordinate system is right-handed on each face, and the
-///<    faces are oriented such that Hilbert curves connect continuously from
-///<    one face to the next.
+///<    Leaf-cell coordinates.  "i" and "j" are integers in the range [0,(2**30)-1] that identify a
+///<    particular leaf cell on the given face.
+///<    The (i, j) coordinate system is right-handed on each face, and the faces are oriented such
+///<    that Hilbert curves connect continuously from one face to the next.
 public struct LeafCoordinate {
     public let zone: Zone
     public let coordinate: Coordinate
+}
+
+extension LeafCoordinate : Equatable {
+    
+}
+
+extension LeafCoordinate : CustomStringConvertible {
+    public var description: String {
+        "#\(zone), (\(coordinate.x),\(coordinate.y))"
+    }
 }
 
 public extension LeafCoordinate {
@@ -55,17 +64,7 @@ public extension LeafCoordinate {
     }
 }
 
-extension LeafCoordinate : Equatable {
-    
-}
-
-extension LeafCoordinate : CustomStringConvertible {
-    public var description: String {
-        "#\(zone), (\(coordinate.x),\(coordinate.y))"
-    }
-}
-
-extension LeafCoordinate {
+internal extension LeafCoordinate {
     func cartesianCoordinate(with offset: SIMD2<Double>) -> CartesianCoordinate {
         let st = (SIMD2<Double>(coordinate) + offset) / Double(Self.scalarMax)
         let stSign = sign(st - 0.5)

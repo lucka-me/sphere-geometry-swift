@@ -92,11 +92,11 @@ public extension CellCollection {
 
 public extension CellCollection {
     func index(after cell: CellIdentifier) -> UnderlyingSequence.Index {
-        cells.upper(of: cell, comparedBy: CellIdentifier.entirelyBefore(lhs:rhs:))
+        upper(of: cell, comparedBy: CellIdentifier.entirelyBefore(lhs:rhs:))
     }
 
     func index(after cell: CellIdentifier, since index: Index) -> Index {
-        cells.upper(
+        upper(
             of: cell,
             from: index,
             to: cells.endIndex,
@@ -117,11 +117,11 @@ public extension CellCollection {
 
 public extension CellCollection {
     func intersection(_ element: Element) -> Self {
-        let lower = self.cells.lower(of: element, comparedBy: Element.entirelyBefore(lhs:rhs:))
+        let lower = self.lower(of: element, comparedBy: Element.entirelyBefore(lhs:rhs:))
         guard lower < self.cells.endIndex else {
             return .init()
         }
-        let upper = self.cells.upper(
+        let upper = self.upper(
             of: element,
             from: lower,
             to: self.cells.endIndex,
@@ -135,7 +135,7 @@ public extension CellCollection {
     }
 
     func intersects(_ element: Element) -> Bool {
-        let index = self.cells.lower(of: element, comparedBy: Element.entirelyBefore(lhs:rhs:))
+        let index = self.lower(of: element, comparedBy: Element.entirelyBefore(lhs:rhs:))
         return index < self.cells.endIndex && self.cells[index].intersects(element)
     }
     
@@ -215,7 +215,7 @@ public extension CellCollection {
             // If our first cell ends before the one we need to contain, advance
             // where we start searching.
             if (Element.entirelyBefore(lhs: self.cells[selfIndex], rhs: otherCell)) {
-                selfIndex = self.cells.lower(
+                selfIndex = self.lower(
                     of: otherCell,
                     from: selfIndex + 1,
                     to: self.cells.endIndex,
@@ -233,7 +233,7 @@ public extension CellCollection {
 
 public extension CellCollection {
     mutating func insert(_ cell: CellIdentifier) -> (index: Index, inserted: Bool) {
-        var (cellIndex, inserted) = cells.insert(cell)
+        var (cellIndex, inserted) = insertToUnderlying(cell)
         guard inserted else {
             return (cellIndex, false)
         }
@@ -385,8 +385,9 @@ fileprivate extension CellCollection {
                     lhsIndex += 1
                 } else {
                     // Advance "rhsIndex" to the first cell that might overlap lhsCell.
-                    rhsIndex = rhs.lower(
+                    rhsIndex = BinarySearch.lower(
                         of: lhsCell,
+                        in: rhs,
                         from: rhsIndex + 1,
                         to: rhs.endIndex,
                         comparedBy: Element.entirelyBefore(lhs:rhs:)
@@ -398,8 +399,9 @@ fileprivate extension CellCollection {
                     intersection.append(rhsCell)
                     rhsIndex += 1
                 } else {
-                    lhsIndex = lhs.lower(
+                    lhsIndex = BinarySearch.lower(
                         of: rhsCell,
+                        in: lhs,
                         from: lhsIndex + 1,
                         to: lhs.endIndex,
                         comparedBy: Element.entirelyBefore(lhs:rhs:)
@@ -420,27 +422,21 @@ fileprivate extension CellCollection {
     }
 }
 
-fileprivate typealias UnderlyingBinarySearchable = BinarySearchable
-
-extension CellCollection.UnderlyingSequence : UnderlyingBinarySearchable {
-    
-}
-
-fileprivate extension CellCollection.UnderlyingSequence {
+fileprivate extension CellCollection {
     @discardableResult
-    mutating func insert(_ newElement: Element) -> (index: Index, inserted: Bool) {
+    mutating func insertToUnderlying(_ newElement: Element) -> (index: Index, inserted: Bool) {
         guard !isEmpty else {
-            append(newElement)
+            cells.append(newElement)
             return (startIndex, true)
         }
         let upper = self.upper(of: newElement)
         guard upper > startIndex else {
-            insert(newElement, at: upper)
+            cells.insert(newElement, at: upper)
             return (upper, true)
         }
         let shouldInsert = (self[upper - 1] < newElement)
         if shouldInsert {
-            insert(newElement, at: upper)
+            cells.insert(newElement, at: upper)
         }
         return (upper, shouldInsert)
     }

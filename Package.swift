@@ -8,10 +8,14 @@ let package = Package(
     products: [
         .library(
             name: "SphereGeometry",
-            targets: ["SphereGeometry"]
+            targets: [
+                "SphereGeometry",
+                "BinarySearch"
+            ]
         ),
     ],
     targets: [
-        .target(name: "SphereGeometry"),
+        .target(name: "SphereGeometry", dependencies: [ .target(name: "BinarySearch") ]),
+        .target(name: "BinarySearch")
     ]
 )

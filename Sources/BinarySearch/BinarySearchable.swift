@@ -1,6 +1,6 @@
 //
 //  BinarySearchable.swift
-//  SphereGeometry
+//  BinarySearch
 //
 //  Created by Lucka on 12/9/2024.
 //

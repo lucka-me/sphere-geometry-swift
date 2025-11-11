@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import BinarySearch
 
 public struct CellCollection {
     public private(set) var cells: UnderlyingSequence = [ ]

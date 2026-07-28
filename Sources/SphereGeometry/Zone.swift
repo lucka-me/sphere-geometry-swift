@@ -16,7 +16,7 @@ public enum Zone : UInt8 {
     case south      = 5
 }
 
-extension Zone : CaseIterable, Hashable {
+extension Zone : CaseIterable, Hashable, Sendable {
     
 }
 
